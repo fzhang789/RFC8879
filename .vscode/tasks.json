@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "RFC8879: build test (MinGW gcc)",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-Iinclude",
+        "-Wall",
+        "-Wextra",
+        "-std=c11",
+        "src/hitls_cert_compress.c",
+        "tests/test_hitls_cert_compress.c",
+        "-o",
+        "build/test_rfc8879.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "RFC8879: run test exe",
+      "type": "shell",
+      "command": "${workspaceFolder}\\build\\test_rfc8879.exe",
+      "dependsOn": "RFC8879: build test (MinGW gcc)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RFC8879: run test script (PowerShell)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tests/run_local_test.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

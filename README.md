@@ -43,6 +43,17 @@ cmake --build build --config Release
 .\build\Release\test_rfc8879.exe
 ```
 
+### VSCode + PowerShell 常见问题修复
+
+1. 运行批处理时请使用 `./`（或 `cmd /c`），不要直接写 `tests\run_local_test.bat`。
+   - 正确：`./tests/run_local_test.bat`
+   - 或：`powershell -ExecutionPolicy Bypass -File tests/run_local_test.ps1`
+2. 不要使用 VSCode 默认“编译当前文件”任务来编译 `tests/test_hitls_cert_compress.c`，
+   因为该任务不会自动带 `-Iinclude`，也不会链接 `src/hitls_cert_compress.c`。
+3. 本仓库已提供 `.vscode/tasks.json`，请使用任务：
+   - `RFC8879: build test (MinGW gcc)`
+   - `RFC8879: run test exe`
+
 ## Linux / macOS (bash)
 
 ```bash
