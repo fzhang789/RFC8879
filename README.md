@@ -28,6 +28,17 @@ tests\run_local_test.bat
 并在 `build\test_rfc8879.exe` 生成并运行测试。
 
 ### 方式 2：手动命令（MinGW）
+## 本地验证
+
+### Linux / macOS (bash)
+
+```bash
+mkdir -p build
+gcc -Iinclude -Wall -Wextra -std=c11 src/hitls_cert_compress.c tests/test_hitls_cert_compress.c -o build/test_rfc8879
+./build/test_rfc8879
+```
+
+### Windows (PowerShell + MinGW)
 
 ```powershell
 New-Item -ItemType Directory -Path build -Force | Out-Null
@@ -59,6 +70,14 @@ cmake --build build --config Release
 ```bash
 bash tests/run_local_test.sh
 ```
+
+> 你截图中的报错 `cannot open output file /tmp/test_rfc8879.exe` 是因为 Windows 下通常没有 `/tmp` 目录。
+> 因此请改为输出到仓库内 `build/` 目录。
+```bash
+gcc -Iinclude src/hitls_cert_compress.c tests/test_hitls_cert_compress.c -o /tmp/test_rfc8879
+/tmp/test_rfc8879
+```
+
 
 ## 与 openHiTLS 主仓接入关系
 
