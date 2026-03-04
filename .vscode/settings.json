@@ -1,0 +1,11 @@
+{
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/include",
+    "${workspaceFolder}/src",
+    "${workspaceFolder}/tests"
+  ],
+  "C_Cpp.default.defines": [],
+  "C_Cpp.default.cStandard": "c11",
+  "C_Cpp.default.compilerPath": "gcc",
+  "C_Cpp.errorSquiggles": "enabled"
+}

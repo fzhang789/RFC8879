@@ -12,6 +12,22 @@
 
 ## Windows 优先运行方式
 
+
+### 方式 0：VSCode 终端（PowerShell）一键运行（最稳妥）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests/run_local_test.ps1
+```
+
+或仓库根目录直接运行：
+
+```powershell
+./run_local_test.ps1
+```
+
+> 注意：在 PowerShell 中，直接输入 `tests\run_local_test.bat` 会被当成模块路径，触发 `CouldNotAutoLoadModule`。
+> 若要直接跑 bat，请写成 `./tests/run_local_test.bat`。
+
 ### 方式 1：直接运行批处理（推荐）
 
 在 `cmd` 或 VSCode 终端中执行：
@@ -64,6 +80,7 @@ cmake --build build --config Release
 3. 本仓库已提供 `.vscode/tasks.json`，请使用任务：
    - `RFC8879: build test (MinGW gcc)`
    - `RFC8879: run test exe`
+4. 若你在 VSCode 用的是默认任务 **“C/C++: gcc.exe 生成活动文件”**，本仓库已在 `.vscode/tasks.json` 覆盖同名任务为完整构建命令。
 
 ## Linux / macOS (bash)
 
