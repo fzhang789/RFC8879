@@ -32,3 +32,7 @@
 - [ ] 记录压缩率：`raw_size / compressed_size`。
 - [ ] 记录握手 CPU 时间。
 - [ ] 记录握手总耗时与峰值内存。
+
+## 6. 自动化样例用例（已落地）
+
+- [x] `tests/test_hitls_cert_compress.c`：覆盖扩展解析、算法协商、压缩握手消息打包、解包、解压一致性。
