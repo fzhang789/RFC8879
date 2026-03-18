@@ -7,6 +7,7 @@
 - `CompressedCertificate` 握手消息打包与解析。
 - 压缩方法注册表 + 默认算法注册（zlib/brotli/zstd）。
 - 发送阈值控制、最大解压长度保护（16MB）。
+- 提供 openHiTLS 风格接入 API（`SSL_CTX`/`SSL` 级启用、算法配置、协商与收发封装）。
 
 > 说明：当前默认算法实现为 demo RLE 编解码器，用于验证框架链路，不依赖外部 zlib/brotli/zstd 动态库。
 
@@ -101,3 +102,5 @@ gcc -Iinclude src/hitls_cert_compress.c tests/test_hitls_cert_compress.c -o /tmp
 当前代码定位为 RFC8879 **PoC 骨架**（可单测验证），并非 openHiTLS 主仓可直接上线版本。详细差距见：
 
 - `docs/openhitls_integration_readiness.md`
+- `docs/openhitls_community_integration_guide.md`（如何向 GitCode 社区仓 `openHiTLS/openhitls` 发起分阶段 MR）
+- `docs/openhitls_upstream_patchset.md`（下一步执行手册 + 可迁移代码模板）
