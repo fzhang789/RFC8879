@@ -67,6 +67,18 @@ typedef struct {
     size_t compressed_cert_msg_len;
 } HITLS_CompressedCertificate;
 
+typedef struct {
+    HITLS_CertCompressCtx cert_compress;
+    uint8_t cert_compression_enabled;
+} HITLS_SSL_CTX;
+
+typedef struct {
+    HITLS_SSL_CTX *ctx;
+    HITLS_CertCompressCtx cert_compress;
+    uint8_t cert_compression_enabled;
+    uint8_t has_local_enable_override;
+} HITLS_SSL;
+
 void HITLS_CertCompressCtxInit(HITLS_CertCompressCtx *ctx);
 int HITLS_CertCompressEnable(HITLS_CertCompressCtx *ctx, uint16_t algorithm, uint8_t enabled);
 int HITLS_CertCompressIsEnabled(const HITLS_CertCompressCtx *ctx, uint16_t algorithm);
@@ -114,6 +126,30 @@ int HITLS_BuildCompressedCertificateHandshake(uint16_t algorithm,
 int HITLS_ParseCompressedCertificateHandshake(const uint8_t *in,
                                               size_t in_len,
                                               HITLS_CompressedCertificate *msg);
+
+void HITLS_SSL_CTX_Init(HITLS_SSL_CTX *ctx);
+int HITLS_SSL_CTX_set_cert_compression_enabled(HITLS_SSL_CTX *ctx, uint8_t onoff);
+int HITLS_SSL_CTX_add_cert_compression_alg(HITLS_SSL_CTX *ctx, uint16_t algorithm);
+
+void HITLS_SSL_Init(HITLS_SSL *ssl, HITLS_SSL_CTX *ctx);
+int HITLS_SSL_set_cert_compression_enabled(HITLS_SSL *ssl, uint8_t onoff);
+int HITLS_SSL_add_cert_compression_alg(HITLS_SSL *ssl, uint16_t algorithm);
+int HITLS_SSL_build_clienthello_cert_compress_ext(const HITLS_SSL *ssl, uint8_t *out, size_t *out_len);
+int HITLS_SSL_parse_peer_cert_compress_ext(HITLS_SSL *ssl, const uint8_t *ext_data, size_t ext_len);
+int HITLS_SSL_negotiate_cert_compression(HITLS_SSL *ssl,
+                                         const uint16_t *server_priority,
+                                         size_t server_priority_len);
+int HITLS_SSL_get_negotiated_cert_compression(const HITLS_SSL *ssl, uint16_t *algorithm);
+int HITLS_SSL_compress_certificate(HITLS_SSL *ssl,
+                                   const uint8_t *cert_msg,
+                                   size_t cert_msg_len,
+                                   uint8_t *out,
+                                   size_t *out_len,
+                                   uint32_t *uncompressed_len);
+int HITLS_SSL_decompress_certificate(const HITLS_SSL *ssl,
+                                     const HITLS_CompressedCertificate *msg,
+                                     uint8_t *out,
+                                     size_t *out_len);
 
 #ifdef __cplusplus
 }
