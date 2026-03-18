@@ -103,3 +103,4 @@ gcc -Iinclude src/hitls_cert_compress.c tests/test_hitls_cert_compress.c -o /tmp
 
 - `docs/openhitls_integration_readiness.md`
 - `docs/openhitls_community_integration_guide.md`（如何向 GitCode 社区仓 `openHiTLS/openhitls` 发起分阶段 MR）
+- `docs/openhitls_upstream_patchset.md`（下一步执行手册 + 可迁移代码模板）
