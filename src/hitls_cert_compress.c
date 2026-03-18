@@ -2,6 +2,10 @@
 
 #include <string.h>
 
+#ifdef HITLS_HAVE_ZLIB
+#include <zlib.h>
+#endif
+
 #define HITLS_MAX_REGISTERED_METHODS 8
 
 static HITLS_CertCompressMethod g_methods[HITLS_MAX_REGISTERED_METHODS];
@@ -63,6 +67,50 @@ static int HitlsSimpleRleDecompress(const uint8_t *in, size_t in_len, uint8_t *o
     return 0;
 }
 
+#ifdef HITLS_HAVE_ZLIB
+static int HitlsZlibCompress(const uint8_t *in, size_t in_len, uint8_t *out, size_t *out_len)
+{
+    uLongf z_out_len;
+    int zrc;
+
+    if (in == NULL || out == NULL || out_len == NULL) {
+        return -1;
+    }
+    if (in_len > (size_t)0xFFFFFFFFu || *out_len > (size_t)0xFFFFFFFFu) {
+        return -1;
+    }
+
+    z_out_len = (uLongf)(*out_len);
+    zrc = compress2((Bytef *)out, &z_out_len, (const Bytef *)in, (uLong)in_len, Z_BEST_SPEED);
+    if (zrc != Z_OK) {
+        return -1;
+    }
+    *out_len = (size_t)z_out_len;
+    return 0;
+}
+
+static int HitlsZlibDecompress(const uint8_t *in, size_t in_len, uint8_t *out, size_t *out_len)
+{
+    uLongf z_out_len;
+    int zrc;
+
+    if (in == NULL || out == NULL || out_len == NULL) {
+        return -1;
+    }
+    if (in_len > (size_t)0xFFFFFFFFu || *out_len > (size_t)0xFFFFFFFFu) {
+        return -1;
+    }
+
+    z_out_len = (uLongf)(*out_len);
+    zrc = uncompress((Bytef *)out, &z_out_len, (const Bytef *)in, (uLong)in_len);
+    if (zrc != Z_OK) {
+        return -1;
+    }
+    *out_len = (size_t)z_out_len;
+    return 0;
+}
+#endif
+
 void HITLS_CertCompressCtxInit(HITLS_CertCompressCtx *ctx)
 {
     if (ctx == NULL) {
@@ -115,9 +163,7 @@ int HITLS_CertCompressIsEnabled(const HITLS_CertCompressCtx *ctx, uint16_t algor
 
 int HITLS_RegisterDefaultCertCompressionMethods(void)
 {
-    HITLS_CertCompressMethod zlib_method = {
-        HITLS_CERT_COMPRESS_ZLIB, "zlib-demo-rle", HitlsSimpleRleCompress, HitlsSimpleRleDecompress
-    };
+    HITLS_CertCompressMethod zlib_method;
     HITLS_CertCompressMethod brotli_method = {
         HITLS_CERT_COMPRESS_BROTLI, "brotli-demo-rle", HitlsSimpleRleCompress, HitlsSimpleRleDecompress
     };
@@ -125,6 +171,18 @@ int HITLS_RegisterDefaultCertCompressionMethods(void)
         HITLS_CERT_COMPRESS_ZSTD, "zstd-demo-rle", HitlsSimpleRleCompress, HitlsSimpleRleDecompress
     };
     int rc;
+
+#ifdef HITLS_HAVE_ZLIB
+    zlib_method.algorithm = HITLS_CERT_COMPRESS_ZLIB;
+    zlib_method.name = "zlib";
+    zlib_method.compress = HitlsZlibCompress;
+    zlib_method.decompress = HitlsZlibDecompress;
+#else
+    zlib_method.algorithm = HITLS_CERT_COMPRESS_ZLIB;
+    zlib_method.name = "zlib-demo-rle";
+    zlib_method.compress = HitlsSimpleRleCompress;
+    zlib_method.decompress = HitlsSimpleRleDecompress;
+#endif
 
     rc = HITLS_RegisterCertCompression(&zlib_method);
     if (rc != HITLS_CERT_COMPRESS_OK) {

@@ -3,6 +3,7 @@
 目标仓库：<https://gitcode.com/openHiTLS/openhitls>
 
 > 你现在仓库里已经有可运行的 RFC8879 PoC 与 openHiTLS 风格 API。本文给的是“如何真正并入社区主仓”的落地动作和代码模板。
+> 当前环境里直接访问 gitcode.com 可能被网络策略阻断（例如 `CONNECT tunnel failed, response 403`），所以我补充了本地分支准备脚本：`scripts/openhitls_upstream_push.sh`。
 
 ## 0. 先准备：社区接入前置条件
 
@@ -94,6 +95,9 @@ M1 目标是“先让握手链路正确，哪怕只用 demo 压缩算法”。
 3. 在握手链路按 `integration/openhitls/rfc8879_hooks_example.c` 挂 4 个钩子。
 4. 通过单测后发起 M1 MR。
 5. M1 合并后，再做 M2（zlib）MR，避免一次性大改被卡评审。
+
+可用脚本（在你本机有 openHiTLS 仓库时执行）：  
+`./scripts/openhitls_upstream_push.sh <openhitls_repo_path> <branch_name>`
 
 ---
 
