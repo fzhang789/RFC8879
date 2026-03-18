@@ -402,3 +402,160 @@ int HITLS_ParseCompressedCertificateHandshake(const uint8_t *in,
     msg->compressed_cert_msg_len = in_len - 5U;
     return HITLS_CERT_COMPRESS_OK;
 }
+
+void HITLS_SSL_CTX_Init(HITLS_SSL_CTX *ctx)
+{
+    if (ctx == NULL) {
+        return;
+    }
+    memset(ctx, 0, sizeof(*ctx));
+    HITLS_CertCompressCtxInit(&ctx->cert_compress);
+    ctx->cert_compression_enabled = 1U;
+}
+
+int HITLS_SSL_CTX_set_cert_compression_enabled(HITLS_SSL_CTX *ctx, uint8_t onoff)
+{
+    if (ctx == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    ctx->cert_compression_enabled = (onoff != 0U) ? 1U : 0U;
+    return HITLS_CERT_COMPRESS_OK;
+}
+
+int HITLS_SSL_CTX_add_cert_compression_alg(HITLS_SSL_CTX *ctx, uint16_t algorithm)
+{
+    if (ctx == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    return HITLS_CertCompressEnable(&ctx->cert_compress, algorithm, 1U);
+}
+
+void HITLS_SSL_Init(HITLS_SSL *ssl, HITLS_SSL_CTX *ctx)
+{
+    if (ssl == NULL) {
+        return;
+    }
+    memset(ssl, 0, sizeof(*ssl));
+    ssl->ctx = ctx;
+    if (ctx != NULL) {
+        ssl->cert_compress = ctx->cert_compress;
+        ssl->cert_compression_enabled = ctx->cert_compression_enabled;
+    } else {
+        HITLS_CertCompressCtxInit(&ssl->cert_compress);
+        ssl->cert_compression_enabled = 1U;
+    }
+}
+
+int HITLS_SSL_set_cert_compression_enabled(HITLS_SSL *ssl, uint8_t onoff)
+{
+    if (ssl == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    ssl->cert_compression_enabled = (onoff != 0U) ? 1U : 0U;
+    ssl->has_local_enable_override = 1U;
+    return HITLS_CERT_COMPRESS_OK;
+}
+
+int HITLS_SSL_add_cert_compression_alg(HITLS_SSL *ssl, uint16_t algorithm)
+{
+    if (ssl == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    return HITLS_CertCompressEnable(&ssl->cert_compress, algorithm, 1U);
+}
+
+int HITLS_SSL_build_clienthello_cert_compress_ext(const HITLS_SSL *ssl, uint8_t *out, size_t *out_len)
+{
+    if (ssl == NULL || out_len == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    if (ssl->cert_compression_enabled == 0U) {
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+    return HITLS_BuildCompressCertificateExtension(&ssl->cert_compress, out, out_len);
+}
+
+int HITLS_SSL_parse_peer_cert_compress_ext(HITLS_SSL *ssl, const uint8_t *ext_data, size_t ext_len)
+{
+    if (ssl == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    if (ssl->cert_compression_enabled == 0U) {
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+    return HITLS_ParseCompressCertificateExtension(&ssl->cert_compress, ext_data, ext_len);
+}
+
+int HITLS_SSL_negotiate_cert_compression(HITLS_SSL *ssl,
+                                         const uint16_t *server_priority,
+                                         size_t server_priority_len)
+{
+    if (ssl == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    if (ssl->cert_compression_enabled == 0U) {
+        ssl->cert_compress.selected_algorithm = 0U;
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+    return HITLS_SelectCommonCertCompression(&ssl->cert_compress, server_priority, server_priority_len, NULL);
+}
+
+int HITLS_SSL_get_negotiated_cert_compression(const HITLS_SSL *ssl, uint16_t *algorithm)
+{
+    if (ssl == NULL || algorithm == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    *algorithm = ssl->cert_compress.selected_algorithm;
+    return (*algorithm == 0U) ? HITLS_CERT_COMPRESS_ERR_NOT_FOUND : HITLS_CERT_COMPRESS_OK;
+}
+
+int HITLS_SSL_compress_certificate(HITLS_SSL *ssl,
+                                   const uint8_t *cert_msg,
+                                   size_t cert_msg_len,
+                                   uint8_t *out,
+                                   size_t *out_len,
+                                   uint32_t *uncompressed_len)
+{
+    int rc;
+    if (ssl == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    if (ssl->cert_compression_enabled == 0U) {
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+    if (HITLS_ShouldSendCompressedCertificate(&ssl->cert_compress, cert_msg_len) == 0) {
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+
+    rc = HITLS_CompressCertificateMessage(&ssl->cert_compress,
+                                          ssl->cert_compress.selected_algorithm,
+                                          cert_msg,
+                                          cert_msg_len,
+                                          out,
+                                          out_len,
+                                          uncompressed_len);
+    if (rc == HITLS_CERT_COMPRESS_OK) {
+        ssl->cert_compress.last_uncompressed_len = *uncompressed_len;
+        ssl->cert_compress.last_compressed_len = (uint32_t)(*out_len);
+    }
+    return rc;
+}
+
+int HITLS_SSL_decompress_certificate(const HITLS_SSL *ssl,
+                                     const HITLS_CompressedCertificate *msg,
+                                     uint8_t *out,
+                                     size_t *out_len)
+{
+    if (ssl == NULL || msg == NULL) {
+        return HITLS_CERT_COMPRESS_ERR_INVALID_ARG;
+    }
+    if (ssl->cert_compression_enabled == 0U) {
+        return HITLS_CERT_COMPRESS_ERR_DISABLED;
+    }
+    return HITLS_DecompressCertificateMessage(msg->selected_algorithm,
+                                              msg->compressed_cert_msg,
+                                              msg->compressed_cert_msg_len,
+                                              out,
+                                              out_len,
+                                              msg->uncompressed_len);
+}

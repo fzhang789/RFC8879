@@ -104,11 +104,79 @@ static void TestNegativeCases(void)
     }
 }
 
+static void TestOpenHiTLSStyleIntegration(void)
+{
+    HITLS_SSL_CTX server_ctx;
+    HITLS_SSL server_ssl;
+    uint16_t priority[] = {HITLS_CERT_COMPRESS_ZSTD, HITLS_CERT_COMPRESS_ZLIB};
+    uint16_t negotiated = 0;
+    uint8_t ext[8];
+    size_t ext_len = sizeof(ext);
+    uint8_t compressed[256];
+    size_t compressed_len = sizeof(compressed);
+    uint32_t plain_len = 0;
+    uint8_t handshake[300];
+    size_t handshake_len = sizeof(handshake);
+    HITLS_CompressedCertificate parsed;
+    uint8_t decompressed[256];
+    size_t decompressed_len = sizeof(decompressed);
+    const char *plain = "AAAAAAAAAAAAABBBBBBBBBBBBBCCCCCCCCCCCCC";
+
+    HITLS_SSL_CTX_Init(&server_ctx);
+    assert(HITLS_SSL_CTX_add_cert_compression_alg(&server_ctx, HITLS_CERT_COMPRESS_ZLIB) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_SSL_CTX_add_cert_compression_alg(&server_ctx, HITLS_CERT_COMPRESS_ZSTD) == HITLS_CERT_COMPRESS_OK);
+    server_ctx.cert_compress.send_compressed_by_default = 1;
+    server_ctx.cert_compress.min_compress_len = 1;
+
+    HITLS_SSL_Init(&server_ssl, &server_ctx);
+    assert(HITLS_RegisterDefaultCertCompressionMethods() == HITLS_CERT_COMPRESS_OK);
+
+    /* peer advertises zlib only */
+    ext[0] = 0;
+    ext[1] = HITLS_CERT_COMPRESS_ZLIB;
+    ext_len = 2;
+    assert(HITLS_SSL_parse_peer_cert_compress_ext(&server_ssl, ext, ext_len) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_SSL_negotiate_cert_compression(&server_ssl, priority, 2) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_SSL_get_negotiated_cert_compression(&server_ssl, &negotiated) == HITLS_CERT_COMPRESS_OK);
+    assert(negotiated == HITLS_CERT_COMPRESS_ZLIB);
+
+    ext_len = sizeof(ext);
+    assert(HITLS_SSL_build_clienthello_cert_compress_ext(&server_ssl, ext, &ext_len) == HITLS_CERT_COMPRESS_OK);
+    assert(ext_len == 4);
+
+    assert(HITLS_SSL_compress_certificate(&server_ssl,
+                                          (const uint8_t *)plain,
+                                          strlen(plain),
+                                          compressed,
+                                          &compressed_len,
+                                          &plain_len) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_BuildCompressedCertificateHandshake(negotiated,
+                                                     plain_len,
+                                                     compressed,
+                                                     compressed_len,
+                                                     handshake,
+                                                     &handshake_len) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_ParseCompressedCertificateHandshake(handshake, handshake_len, &parsed) == HITLS_CERT_COMPRESS_OK);
+    assert(HITLS_SSL_decompress_certificate(&server_ssl, &parsed, decompressed, &decompressed_len) == HITLS_CERT_COMPRESS_OK);
+    assert(decompressed_len == strlen(plain));
+    assert(memcmp(decompressed, plain, strlen(plain)) == 0);
+
+    assert(HITLS_SSL_set_cert_compression_enabled(&server_ssl, 0) == HITLS_CERT_COMPRESS_OK);
+    compressed_len = sizeof(compressed);
+    assert(HITLS_SSL_compress_certificate(&server_ssl,
+                                          (const uint8_t *)plain,
+                                          strlen(plain),
+                                          compressed,
+                                          &compressed_len,
+                                          &plain_len) == HITLS_CERT_COMPRESS_ERR_DISABLED);
+}
+
 int main(void)
 {
     TestExtensionAndSelection();
     TestCompressAndHandshake();
     TestNegativeCases();
+    TestOpenHiTLSStyleIntegration();
     puts("test_hitls_cert_compress: PASS");
     return 0;
 }
